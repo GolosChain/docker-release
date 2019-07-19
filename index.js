@@ -12,7 +12,7 @@ let releaseInfo = null;
 try {
     packageInfo = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
 } catch (err) {
-    console.error('No package.json found', err);
+    console.error('No package.json found');
     process.exit(1);
 }
 
@@ -147,30 +147,29 @@ async function promptUpdateType() {
 }
 
 function getLocalImageName() {
-    return releaseInfo.imageName || packageInfo.imageName || packageInfo.name;
+    return (
+        (releaseInfo && releaseInfo.imageName) ||
+        (packageInfo.dockerRelease && packageInfo.dockerRelease.imageName) ||
+        packageInfo.name
+    );
 }
 
 async function getDockerHubInfo(version) {
     const info = {
-        imageName: null,
-        dockerUser: null,
+        user:
+            (releaseInfo && releaseInfo.user) ||
+            (packageInfo.dockerRelease && packageInfo.dockerRelease.user),
+        imageName:
+            (releaseInfo && releaseInfo.imageName) ||
+            (packageInfo.dockerRelease &&
+                packageInfo.dockerRelease.imageName) ||
+            packageInfo.name,
     };
-
-    if (releaseInfo) {
-        info.imageName = releaseInfo.imageName;
-        info.dockerUser = releaseInfo.dockerUser;
-    }
-
-    if (!info.imageName) {
-        info.imageName = packageInfo.imageName || packageInfo.name;
-    }
 
     const publishChoices = [];
 
-    if (info.dockerUser && info.imageName) {
-        publishChoices.push(
-            `As "${info.dockerUser}/${info.imageName}:${version}"`
-        );
+    if (info.user && info.imageName) {
+        publishChoices.push(`As "${info.user}/${info.imageName}:${version}"`);
     }
 
     publishChoices.push('Enter manually', `No, don't publish`);
@@ -207,11 +206,11 @@ async function getDockerHubInfo(version) {
             },
         ]);
 
-        const [, dockerUser, imageName, imageVersion] = fullImageName.match(
+        const [, user, imageName, imageVersion] = fullImageName.match(
             fullImageNameRx
         );
 
-        info.dockerUser = dockerUser;
+        info.user = user;
         info.imageName = imageName;
         info.version = imageVersion;
     }
@@ -234,17 +233,12 @@ async function buildImage(imageName) {
     return match[1];
 }
 
-async function tagImage({ dockerUser, imageName }, version, imageId) {
-    await asyncExec(
-        `docker tag ${imageId} ${dockerUser}/${imageName}:${version}`
-    );
+async function tagImage({ user, imageName }, version, imageId) {
+    await asyncExec(`docker tag ${imageId} ${user}/${imageName}:${version}`);
 }
 
-async function pushImage({ dockerUser, imageName }, version) {
-    await asyncExec2('docker', [
-        'push',
-        `${dockerUser}/${imageName}:${version}`,
-    ]);
+async function pushImage({ user, imageName }, version) {
+    await asyncExec2('docker', ['push', `${user}/${imageName}:${version}`]);
 }
 
 async function gitPush(version) {
