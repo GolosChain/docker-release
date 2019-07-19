@@ -114,10 +114,10 @@ async function checkRepositoryState() {
     const { stdout } = await asyncExec('git status');
 
     if (!stdout.endsWith('\nnothing to commit, working tree clean')) {
-        console.error(
-            'Error: Repository working tree is not clean!\n       Please commit changes and try again.\n'
-        );
         console.error(stdout);
+        console.error(
+            '\nError: Repository working tree is not clean!\n       Please commit changes and try again.'
+        );
         process.exit(1);
     }
 }
