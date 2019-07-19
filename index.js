@@ -164,6 +164,7 @@ async function getDockerHubInfo(version) {
             (packageInfo.dockerRelease &&
                 packageInfo.dockerRelease.imageName) ||
             packageInfo.name,
+        version,
     };
 
     const publishChoices = [];
