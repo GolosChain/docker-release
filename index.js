@@ -41,15 +41,15 @@ async function run() {
         const info = await getDockerHubInfo(version);
 
         if (info) {
-            await tagImage(info, info.version, imageId);
-            await pushImage(info, info.version);
+            await tagImage(info, imageId);
+            await pushImage(info);
         }
 
         if (updateType) {
             await gitPush(version);
         }
     } catch (err) {
-        await asyncExec('git checkout -- package.json');
+        await asyncExec('git checkout -- package.json package-lock.json');
         throw err;
     }
 }
@@ -165,6 +165,7 @@ async function getDockerHubInfo(version) {
                 packageInfo.dockerRelease.imageName) ||
             packageInfo.name,
         version,
+        tags: [],
     };
 
     const publishChoices = [];
@@ -213,8 +214,13 @@ async function getDockerHubInfo(version) {
 
         info.user = user;
         info.imageName = imageName;
-        info.version = imageVersion;
+
+        if (imageVersion) {
+            info.version = imageVersion;
+        }
     }
+
+    info.tags = await askAboutAboutAdditionalTags(info);
 
     return info;
 }
@@ -234,12 +240,20 @@ async function buildImage(imageName) {
     return match[1];
 }
 
-async function tagImage({ user, imageName }, version, imageId) {
+async function tagImage({ user, imageName, version, tags }, imageId) {
     await asyncExec(`docker tag ${imageId} ${user}/${imageName}:${version}`);
+
+    for (const tag of tags) {
+        await asyncExec(`docker tag ${imageId} ${user}/${imageName}:${tag}`);
+    }
 }
 
-async function pushImage({ user, imageName }, version) {
+async function pushImage({ user, imageName, version, tags }) {
     await asyncExec2('docker', ['push', `${user}/${imageName}:${version}`]);
+
+    for (const tag of tags) {
+        await asyncExec2('docker', ['push', `${user}/${imageName}:${tag}`]);
+    }
 }
 
 async function gitPush(version) {
@@ -248,6 +262,33 @@ async function gitPush(version) {
     await asyncExec(`git tag v${version} -m 'version ${version}'`);
     await asyncExec('git push');
     await asyncExec(`git push --tags origin v${version}`);
+}
+
+async function askAboutAboutAdditionalTags(info) {
+    const parts = info.version.split('.');
+
+    const choices = [];
+
+    if (parts.length > 2) {
+        choices.push(`also tag as :${parts[0]}.${parts[1]}`);
+    }
+
+    if (parts.length > 1 && parts[0] !== '0') {
+        choices.push(`also tag as :${parts[0]}`);
+    }
+
+    choices.push('also tag as :latest', 'also tag as :develop');
+
+    const { tags } = await inquirer.prompt([
+        {
+            type: 'checkbox',
+            name: 'tags',
+            message: 'Do you want to make additional tags?',
+            choices,
+        },
+    ]);
+
+    return tags.map(tag => tag.replace(/^also tag as :/, ''));
 }
 
 run().catch(err => {
