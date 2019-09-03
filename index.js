@@ -257,7 +257,7 @@ async function pushImage({ user, imageName, version, tags }) {
 }
 
 async function gitPush(version) {
-    await asyncExec('git add -- package.json');
+    await asyncExec('git add -- package.json package-lock.json');
     await asyncExec(`git commit -m 'version ${version}'`);
     await asyncExec(`git tag v${version} -m 'version ${version}'`);
     await asyncExec('git push');
