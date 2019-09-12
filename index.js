@@ -49,7 +49,11 @@ async function run() {
             await gitPush(version);
         }
     } catch (err) {
-        await asyncExec('git checkout -- package.json package-lock.json');
+        try {
+            await asyncExec('git checkout -- package.json');
+            await asyncExec('git checkout -- package-lock.json');
+        } catch {}
+
         throw err;
     }
 }
@@ -257,7 +261,10 @@ async function pushImage({ user, imageName, version, tags }) {
 }
 
 async function gitPush(version) {
-    await asyncExec('git add -- package.json package-lock.json');
+    await asyncExec('git add -- package.json');
+    try {
+        await asyncExec('git add -- package-lock.json');
+    } catch {}
     await asyncExec(`git commit -m 'version ${version}'`);
     await asyncExec(`git tag v${version} -m 'version ${version}'`);
     await asyncExec('git push');
