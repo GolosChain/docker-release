@@ -134,7 +134,7 @@ async function promptUpdateType() {
     const { version } = await inquirer.prompt({
         type: 'list',
         name: 'version',
-        message: 'What type of update is it?',
+        message: `What type of update is it (current version: ${packageInfo.version})?`,
         choices: ['major', 'minor', 'patch', 'no (skip update)'],
         default: 'patch',
     });
