@@ -48,6 +48,8 @@ async function run() {
         if (updateType) {
             await gitPush(version);
         }
+
+        console.log(`Operation have done, package version: ${version}`);
     } catch (err) {
         try {
             await asyncExec('git checkout -- package.json');
